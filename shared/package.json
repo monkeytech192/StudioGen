@@ -1,0 +1,29 @@
+{
+  "name": "@studiogen/shared",
+  "version": "1.0.0",
+  "description": "Shared types and constants for StudioGen AI",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "type": "module",
+  "scripts": {
+    "build": "tsc",
+    "watch": "tsc --watch"
+  },
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    },
+    "./types": {
+      "import": "./types.ts",
+      "types": "./types.ts"
+    },
+    "./constants": {
+      "import": "./constants.ts",
+      "types": "./constants.ts"
+    }
+  },
+  "devDependencies": {
+    "typescript": "~5.8.2"
+  }
+}
