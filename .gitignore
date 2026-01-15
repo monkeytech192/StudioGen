@@ -1,14 +1,3 @@
-# Dependencies
-node_modules
-.pnp
-.pnp.js
-
-# Build outputs
-dist
-dist-ssr
-build
-*.local
-
 # Logs
 logs
 *.log
@@ -18,21 +7,14 @@ yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
 
-# Environment files
-.env
-.env.local
-.env.*.local
-!.env.example
-
-# Database
-*.db
-*.db-journal
-prisma/migrations/
+node_modules
+dist
+dist-ssr
+*.local
 
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
-!.vscode/settings.json
 .idea
 .DS_Store
 *.suo
@@ -40,20 +22,3 @@ prisma/migrations/
 *.njsproj
 *.sln
 *.sw?
-*.swp
-*.swo
-
-# Testing
-coverage
-.nyc_output
-
-# OS
-Thumbs.db
-
-# Typescript
-*.tsbuildinfo
-
-# Backend specific
-backend/.env
-backend/node_modules
-backend/dist
