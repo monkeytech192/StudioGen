@@ -15,6 +15,9 @@ import generateRoutes from './routes/generate.js';
 
 const app = express();
 
+// Trust proxy for ngrok/reverse proxy
+app.set('trust proxy', 1);
+
 // ===================
 // Security Middleware
 // ===================
@@ -42,9 +45,21 @@ app.use(helmet({
   },
 }));
 
-// CORS configuration
+// CORS configuration - allow multiple origins in development
+const corsOrigins = !config.isProduction
+  ? [
+      config.frontendUrl, 
+      'http://localhost:5173', 
+      'http://localhost:5174', 
+      'http://localhost:5175', 
+      'http://localhost:5176',
+      /\.ngrok-free\.dev$/,
+      /\.ngrok\.io$/,
+    ]
+  : config.frontendUrl;
+
 app.use(cors({
-  origin: config.frontendUrl,
+  origin: corsOrigins,
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],

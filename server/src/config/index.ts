@@ -6,8 +6,9 @@ import { fileURLToPath } from 'url';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// Load .env from root directory (../../.. from src/config/)
-dotenv.config({ path: path.resolve(__dirname, '../../../..', '.env') });
+// Load .env from root directory (../../../ from src/config/ to project root, then .. for monorepo root)
+// Path: server/src/config -> server/src -> server -> studiogen-ai (root with .env)
+dotenv.config({ path: path.resolve(__dirname, '../../..', '.env') });
 // Also try local .env for backwards compatibility
 dotenv.config({ path: path.resolve(__dirname, '../..', '.env') });
 

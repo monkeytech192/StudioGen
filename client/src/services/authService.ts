@@ -75,10 +75,10 @@ export const login = async (identifier: string, password: string): Promise<User>
 
 /**
  * Login with Google
- * Uses Google Identity Services (lightweight, no heavy SDK)
+ * Uses OAuth redirect flow (more reliable than popup with COOP policies)
  */
 export const googleLogin = async (credential?: string): Promise<User> => {
-  // If credential provided (from Google Sign-In button), use it
+  // If credential provided (from Google Sign-In callback), use it
   if (credential) {
     const response = await apiFetch<AuthResponse>('/auth/google', {
       method: 'POST',
@@ -107,20 +107,35 @@ export const googleLogin = async (credential?: string): Promise<User> => {
     return userForStorage;
   }
 
-  // Trigger Google Sign-In popup
-  return new Promise((resolve, reject) => {
-    // Check if Google Sign-In is loaded
-    if (typeof google === 'undefined' || !google.accounts) {
-      reject(new Error('Google Sign-In not loaded'));
-      return;
-    }
+  // Use OAuth redirect flow (no popup - avoids COOP issues)
+  const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID || process.env.VITE_GOOGLE_CLIENT_ID;
+  
+  if (!clientId) {
+    throw new Error('Google Client ID not configured');
+  }
 
-    google.accounts.id.prompt((notification: { isNotDisplayed: () => boolean; isSkippedMoment: () => boolean }) => {
-      if (notification.isNotDisplayed() || notification.isSkippedMoment()) {
-        reject(new Error('Google Sign-In cancelled'));
-      }
-    });
-  });
+  // Create OAuth URL for redirect
+  const redirectUri = `${window.location.origin}/auth/google/callback`;
+  const scope = 'openid email profile';
+  const responseType = 'id_token';
+  const nonce = Math.random().toString(36).substring(2);
+  
+  // Save nonce for verification
+  sessionStorage.setItem('google_oauth_nonce', nonce);
+  
+  const authUrl = new URL('https://accounts.google.com/o/oauth2/v2/auth');
+  authUrl.searchParams.set('client_id', clientId);
+  authUrl.searchParams.set('redirect_uri', redirectUri);
+  authUrl.searchParams.set('response_type', responseType);
+  authUrl.searchParams.set('scope', scope);
+  authUrl.searchParams.set('nonce', nonce);
+  authUrl.searchParams.set('prompt', 'select_account');
+
+  // Redirect to Google (this will navigate away from the page)
+  window.location.href = authUrl.toString();
+  
+  // This promise won't resolve - the page will redirect
+  return new Promise(() => {});
 };
 
 /**
@@ -138,9 +153,26 @@ export const initGoogleSignIn = (clientId: string, onSuccess: (user: User) => vo
     callback: async (response: { credential: string }) => {
       try {
         const user = await googleLogin(response.credential);
+        
+        // Resolve pending promise if exists (from googleLogin() without credential)
+        const pendingResolve = (window as unknown as { __googleLoginResolve?: (user: User) => void }).__googleLoginResolve;
+        if (pendingResolve) {
+          pendingResolve(user);
+          delete (window as unknown as { __googleLoginResolve?: (user: User) => void }).__googleLoginResolve;
+          delete (window as unknown as { __googleLoginReject?: (error: Error) => void }).__googleLoginReject;
+        }
+        
         onSuccess(user);
       } catch (error) {
         console.error('Google login failed:', error);
+        
+        // Reject pending promise if exists
+        const pendingReject = (window as unknown as { __googleLoginReject?: (error: Error) => void }).__googleLoginReject;
+        if (pendingReject) {
+          pendingReject(error instanceof Error ? error : new Error('Google login failed'));
+          delete (window as unknown as { __googleLoginResolve?: (user: User) => void }).__googleLoginResolve;
+          delete (window as unknown as { __googleLoginReject?: (error: Error) => void }).__googleLoginReject;
+        }
       }
     },
     auto_select: false,

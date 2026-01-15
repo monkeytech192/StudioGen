@@ -14,6 +14,17 @@ const SignUp: React.FC<SignUpProps> = ({ onSignUp, onGoogleLogin }) => {
     const [isLoading, setIsLoading] = useState(false);
     const [isGoogleLoading, setIsGoogleLoading] = useState(false);
 
+    const handleGoogleClick = async () => {
+        setIsGoogleLoading(true);
+        try {
+            await onGoogleLogin();
+        } catch (error) {
+            // Error handled in App.tsx
+        } finally {
+            setIsGoogleLoading(false);
+        }
+    };
+
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         if (identifier && password) {
@@ -26,12 +37,6 @@ const SignUp: React.FC<SignUpProps> = ({ onSignUp, onGoogleLogin }) => {
                 setIsLoading(false);
             }
         }
-    };
-
-    const handleGoogleClick = async () => {
-        setIsGoogleLoading(true);
-        await onGoogleLogin();
-        setIsGoogleLoading(false);
     };
 
     return (
@@ -72,7 +77,7 @@ const SignUp: React.FC<SignUpProps> = ({ onSignUp, onGoogleLogin }) => {
                         />
                     </div>
                 </div>
-                <button type="submit" disabled={isLoading || isGoogleLoading} className="w-full bg-primary-600 hover:bg-primary-500 text-white font-bold py-2.5 px-4 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-[0_0_20px_rgba(20,184,166,0.3)] hover:shadow-[0_0_25px_rgba(20,184,166,0.5)] flex items-center justify-center gap-2 group">
+                <button type="submit" disabled={isLoading} className="w-full bg-primary-600 hover:bg-primary-500 text-white font-bold py-2.5 px-4 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-[0_0_20px_rgba(20,184,166,0.3)] hover:shadow-[0_0_25px_rgba(20,184,166,0.5)] flex items-center justify-center gap-2 group">
                     {isLoading ? 'Creating Account...' : (
                         <>
                             Sign Up Free
@@ -88,8 +93,13 @@ const SignUp: React.FC<SignUpProps> = ({ onSignUp, onGoogleLogin }) => {
                 <div className="flex-grow border-t border-gray-700/50"></div>
             </div>
             
-            <button onClick={handleGoogleClick} disabled={isGoogleLoading || isLoading} className="w-full flex items-center justify-center gap-2 py-2.5 px-4 bg-white text-gray-900 rounded-lg hover:bg-gray-100 disabled:opacity-50 transition font-bold text-sm">
-                <GoogleIcon className="w-4 h-4" />
+            <button 
+                type="button"
+                onClick={handleGoogleClick} 
+                disabled={isGoogleLoading || isLoading} 
+                className="w-full flex items-center justify-center gap-3 py-2.5 px-4 bg-white border border-gray-300 dark:border-gray-600 text-gray-700 hover:bg-gray-50 dark:bg-gray-800 dark:text-white dark:hover:bg-gray-700 disabled:opacity-50 transition font-medium text-sm rounded-lg shadow-sm"
+            >
+                <GoogleIcon className="w-5 h-5" />
                 {isGoogleLoading ? 'Connecting...' : 'Sign Up with Google'}
             </button>
         </div>

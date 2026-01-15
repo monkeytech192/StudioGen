@@ -20,6 +20,32 @@ services:
       timeout: 5s
       retries: 5
 
+  # Ngrok Tunnel for Client (public HTTPS)
+  ngrok-client:
+    image: ngrok/ngrok:latest
+    container_name: studiogen-ngrok-client
+    restart: unless-stopped
+    environment:
+      NGROK_AUTHTOKEN: ${NGROK_AUTHTOKEN}
+    command: http client:80 --log=stdout
+    ports:
+      - "4040:4040"  # Ngrok dashboard
+    depends_on:
+      - client
+
+  # Ngrok Tunnel for Server API (public HTTPS)
+  ngrok-server:
+    image: ngrok/ngrok:latest
+    container_name: studiogen-ngrok-server
+    restart: unless-stopped
+    environment:
+      NGROK_AUTHTOKEN: ${NGROK_AUTHTOKEN}
+    command: http server:3001 --log=stdout
+    ports:
+      - "4041:4040"  # Ngrok dashboard for server
+    depends_on:
+      - server
+
   # Backend API
   server:
     build:

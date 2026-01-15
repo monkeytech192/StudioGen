@@ -11,12 +11,16 @@ import * as projectService from './services/projectService';
 import { Quality, GenerationFormat, BackgroundStyle, Font, Position, ColorOption, ToastMessage, User, BrandSettings, FeatureToggles, Project } from './types';
 import { QUALITIES, GENERATION_FORMATS, BACKGROUND_STYLES, FONTS, BRAND_MODELS, INDUSTRIES, TRANSLATIONS } from './constants';
 import AuthModal from './components/auth/AuthModal';
+import GoogleCallback from './components/auth/GoogleCallback';
 import Navbar from './components/Navbar';
 import AccountPage from './components/AccountPage';
 import SettingsPage from './components/SettingsPage';
 import ProjectsPage from './components/ProjectsPage';
 
 type ActiveView = 'studio' | 'account' | 'settings' | 'projects';
+
+// Check if this is the Google OAuth callback page
+const isGoogleCallback = window.location.pathname === '/auth/google/callback';
 
 function App() {
   const [darkMode, setDarkMode] = useState(false);
@@ -86,11 +90,33 @@ function App() {
   // UI State
   const [toast, setToast] = useState<ToastMessage | null>(null);
 
+  // Toast helper - defined early for use in callbacks
+  const showToast = (message: string, type: 'success' | 'error', duration: number = 3000) => {
+    setToast({ id: Math.random(), message, type });
+  };
+
+  // Callback for Google Sign-In success
+  const handleGoogleLoginSuccess = (user: User) => {
+    setCurrentUser(user);
+    setIsAuthModalOpen(false);
+    setToast({ id: Math.random(), message: 'Logged in with Google successfully!', type: 'success' });
+  };
+
   useEffect(() => {
     const user = authService.getCurrentUser();
     if (user) {
       setCurrentUser(user);
       setIsAuthModalOpen(false);
+      
+      // Load projects only when user is logged in (async)
+      const loadProjects = async () => {
+        const loadedProjects = await projectService.getProjects();
+        setProjects(loadedProjects);
+        if (loadedProjects.length > 0) {
+          setCurrentProject(loadedProjects[0]);
+        }
+      };
+      loadProjects();
     } else {
       setIsAuthModalOpen(true);
     }
@@ -99,11 +125,19 @@ function App() {
     const prefersDarkMode = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
     setDarkMode(true); 
 
-    // Load projects
-    const loadedProjects = projectService.getProjects();
-    setProjects(loadedProjects);
-    if (loadedProjects.length > 0) {
-        setCurrentProject(loadedProjects[0]);
+    // Initialize Google Sign-In
+    const googleClientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
+    if (googleClientId) {
+      // Wait for Google SDK to load
+      const initGoogle = () => {
+        if (typeof google !== 'undefined' && google.accounts) {
+          authService.initGoogleSignIn(googleClientId, handleGoogleLoginSuccess);
+        } else {
+          // Retry after a short delay if SDK not loaded yet
+          setTimeout(initGoogle, 100);
+        }
+      };
+      initGoogle();
     }
   }, []);
 
@@ -149,6 +183,7 @@ function App() {
       setIsAuthModalOpen(false);
       showToast('Logged in with Google successfully!', 'success');
     } catch (error) {
+      console.error('Google login error:', error);
       const message = error instanceof Error ? error.message : 'Google login failed.';
       showToast(message, 'error');
     }
@@ -189,26 +224,22 @@ function App() {
       throw error;
     }
   };
-  
-  const showToast = (message: string, type: 'success' | 'error', duration: number = 3000) => {
-    setToast({ id: Math.random(), message, type });
-  };
 
   // Project Handlers
-  const handleCreateProject = (name: string) => {
-      const newProject = projectService.createProject(name);
+  const handleCreateProject = async (name: string) => {
+      const newProject = await projectService.createProject(name);
       setProjects([newProject, ...projects]);
       setCurrentProject(newProject);
       setActiveView('studio');
       showToast(`Project "${name}" created.`, 'success');
   };
 
-  const handleRenameProject = (name: string) => {
+  const handleRenameProject = async (name: string) => {
       if (!currentProject) {
-          handleCreateProject(name); // Handle case where user renames "Untitled" before creating
+          await handleCreateProject(name); // Handle case where user renames "Untitled" before creating
           return;
       }
-      const updatedList = projectService.updateProject(currentProject.id, { name });
+      const updatedList = await projectService.updateProject(currentProject.id, { name });
       setProjects(updatedList);
       setCurrentProject({ ...currentProject, name });
   };
@@ -221,17 +252,17 @@ function App() {
       }
   };
 
-  const handleSaveToProject = (finalImage: string) => {
+  const handleSaveToProject = async (finalImage: string) => {
       let targetProject = currentProject;
       
       // If no project exists or selected, create one
       if (!targetProject) {
-          targetProject = projectService.createProject(t('untitledProject'));
+          targetProject = await projectService.createProject(t('untitledProject'));
           setProjects([targetProject, ...projects]);
           setCurrentProject(targetProject);
       }
 
-      const updatedList = projectService.addImageToProject(targetProject.id, finalImage, prompt);
+      const updatedList = await projectService.addImageToProject(targetProject.id, finalImage, prompt);
       setProjects(updatedList);
       
       // Update current project ref
@@ -291,7 +322,10 @@ function App() {
   const generateAndSuggestColors = async (image: string) => {
       setIsFetchingColors(true);
       try {
-        const colors = await suggestTextColors(image.split(',')[1]);
+        // Extract mimeType from data URL
+        const mimeMatch = image.match(/^data:([^;]+);base64,/);
+        const mimeType = mimeMatch ? mimeMatch[1] : 'image/png';
+        const colors = await suggestTextColors(image.split(',')[1], mimeType);
         setSuggestedTextColors(colors);
         setSelectedTextColor(colors[0] || null);
       } catch (e) {
@@ -387,6 +421,11 @@ function App() {
     // Do not reset project context
     showToast("Workspace reset.", 'success');
   };
+
+  // If this is Google OAuth callback, render the callback handler
+  if (isGoogleCallback) {
+    return <GoogleCallback />;
+  }
 
   return (
     <div className={`min-h-screen bg-gray-50 dark:bg-gray-950 text-gray-900 dark:text-gray-100 font-sans transition-colors duration-300 flex`}>

@@ -11,17 +11,22 @@ export default defineConfig(({ mode }) => {
       server: {
         port: 5173,
         host: '0.0.0.0',
+        allowedHosts: ['hypergamous-alivia-portably.ngrok-free.dev'],
         proxy: {
           '/api': {
             target: 'http://localhost:3001',
             changeOrigin: true,
           }
-        }
+        },
+        // Handle SPA fallback for all routes
+        historyApiFallback: true,
       },
       plugins: [react()],
+      envDir: path.resolve(__dirname, '..'),
       define: {
         'process.env.GEMINI_API_KEY': JSON.stringify(env.GEMINI_API_KEY),
         'process.env.VITE_API_URL': JSON.stringify(env.VITE_API_URL || 'http://localhost:3001/api'),
+        'process.env.VITE_GOOGLE_CLIENT_ID': JSON.stringify(env.VITE_GOOGLE_CLIENT_ID),
       },
       resolve: {
         alias: {
@@ -34,6 +39,8 @@ export default defineConfig(({ mode }) => {
       build: {
         outDir: 'dist',
         sourcemap: true,
-      }
+      },
+      // For SPA routing - serve index.html for all routes
+      appType: 'spa',
     };
 });

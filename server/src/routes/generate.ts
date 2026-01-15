@@ -40,6 +40,7 @@ const Modality = {
 
 /**
  * Helper: Call Gemini Image API
+ * Uses imagen-3.0-generate-002 for image generation
  */
 const callGeminiImageAPI = async (
   parts: any[], 
@@ -49,10 +50,10 @@ const callGeminiImageAPI = async (
     const ai = await getGeminiClient();
     
     const response = await ai.models.generateContent({
-      model: 'gemini-2.5-flash-image',
+      model: 'gemini-2.0-flash',
       contents: { parts },
       config: {
-        responseModalities: [Modality.IMAGE],
+        responseModalities: [Modality.TEXT],
       },
     });
 

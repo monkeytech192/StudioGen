@@ -249,7 +249,13 @@ router.post(
       // For lightweight implementation, we decode the JWT and verify essential claims
       const payload = decodeGoogleJwt(credential);
       
+      // Debug logging
+      console.log('[Google Auth] Payload aud:', payload?.aud);
+      console.log('[Google Auth] Config clientId:', config.googleClientId);
+      console.log('[Google Auth] Match:', payload?.aud === config.googleClientId);
+      
       if (!payload || !payload.email || !payload.sub) {
+        console.log('[Google Auth] Invalid payload - missing email or sub');
         res.status(401).json({
           success: false,
           error: 'Invalid Google credential',
@@ -259,6 +265,7 @@ router.post(
 
       // Verify the audience matches our client ID
       if (payload.aud !== config.googleClientId) {
+        console.log('[Google Auth] Audience mismatch!');
         res.status(401).json({
           success: false,
           error: 'Invalid Google credential',

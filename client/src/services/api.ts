@@ -108,14 +108,23 @@ export const apiFetch = async <T = unknown>(
 
     // If token expired, try to refresh
     if (response.status === 401) {
-      const data = await response.json();
+      // Clone response before reading body
+      const clonedResponse = response.clone();
+      let data: { code?: string } = {};
+      
+      try {
+        data = await clonedResponse.json();
+      } catch {
+        // Ignore JSON parse errors
+      }
       
       if (data.code === 'TOKEN_EXPIRED' && refreshToken) {
         const refreshed = await refreshAccessToken();
         
         if (refreshed) {
           // Retry with new token
-          (headers as Record<string, string>)['Authorization'] = `Bearer ${accessToken}`;
+          const newAccessToken = getAccessToken();
+          (headers as Record<string, string>)['Authorization'] = `Bearer ${newAccessToken}`;
           response = await fetch(`${API_BASE_URL}${endpoint}`, {
             ...options,
             headers,
@@ -126,6 +135,9 @@ export const apiFetch = async <T = unknown>(
           window.dispatchEvent(new CustomEvent('auth:logout'));
           return { success: false, error: 'Session expired. Please login again.' };
         }
+      } else {
+        // Not a token expiry issue, return the error from original response
+        return { success: false, error: data.code || 'Unauthorized' };
       }
     }
 
